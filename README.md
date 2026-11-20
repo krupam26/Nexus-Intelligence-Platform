@@ -226,8 +226,7 @@ NEXUS should:
 **Prerequisites:** Python 3.10+, Node.js 18+ and npm, PostgreSQL (optional for persistence).
 
 ```bash
-git clone <YOUR_REPOSITORY_URL>
-cd nexus
+git clone https://github.com/krupam26/Nexus-Intelligence-Platform.git
 ```
 
 **Backend**
