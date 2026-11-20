@@ -1,0 +1,13 @@
+{
+  "description": "Helps travel and hospitality teams unify supplier data, match properties, compare room products, and optimize supplier choices with clear, actionable insights.",
+  "icons": {
+    "icon": "/nexus-favicon.svg"
+  },
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
