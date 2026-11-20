@@ -4,12 +4,8 @@
 
 ### Multi-Supplier Intelligence & Optimization Platform
 
-**Turn fragmented supplier catalogs into one unified, comparable, and optimized inventory.**
+**Turn fragmented travel-supplier catalogs into unified, comparable, and optimized inventory.**
 
-![Status](https://img.shields.io/badge/status-hackathon%20prototype-orange)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![FastAPI](https://img.shields.io/badge/backend-FastAPI-009688)
-![React](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB)
 
 
 
@@ -19,25 +15,25 @@
 
 ## 🎯 The Problem
 
-Travel platforms receive hotel and room inventory from many suppliers. The same property shows up under different names, addresses, and data formats, and the offers attached to it are rarely described the same way.
+Travel platforms receive hotel and room inventory from many suppliers. The same property appears under different names, addresses, and formats, and the offers attached to it are described inconsistently.
 
 | Pain point | Consequence |
 |---|---|
-| Duplicate listings across suppliers | Inflated inventory, confusing search results |
+| Duplicate listings across suppliers | Inflated inventory, cluttered search results |
 | Inconsistent or incomplete data | Unreliable matching and reporting |
 | Room products described differently | Hard to tell what is truly the same product |
-| Inclusions and policies differ | **Misleading price comparisons** (e.g. refundable + breakfast vs. non-refundable room-only) |
-| Manual verification | Slow, expensive, and error-prone |
-| Many competing business priorities | No principled way to choose the best supplier |
+| Inclusions and policies differ | **Misleading price comparisons** (refundable + breakfast vs. non-refundable room-only) |
+| Manual verification | Slow, expensive, error-prone |
+| Competing business priorities | No principled way to pick the best supplier |
 
 ## 💡 Our Solution
 
-NEXUS answers two questions that basic name-matching cannot:
+NEXUS answers two questions that name-matching alone cannot:
 
 1. **Are these listings the same real-world property?**
 2. **Are the products on offer genuinely equivalent?**
 
-Only then does it rank suppliers, so the result is *the best offer among comparable products*, not just the cheapest one.
+Only then does it rank suppliers, so the result is the best offer among *comparable* products, not just the cheapest one.
 
 ```
 Ingest → Normalize → Match → Compare → Optimize → Explain → Human Review
@@ -47,63 +43,74 @@ Ingest → Normalize → Match → Compare → Optimize → Explain → Human Re
 
 ## 📸 Screenshots
 
-### Overview dashboard
-The pipeline at a glance (ingested → normalized → matched → compared → optimized), with live counts and a shortcut into the human review queue.
 
-![NEXUS overview dashboard](public/01-overview-dashboard.png)
+**Overview dashboard**
 
-### Supplier management
-Every connected supplier with its type, listing and property counts, data-quality score, and integration health (Live API, Batch SFTP, Manual Upload, Paused).
+![Overview](public/01-overview-dashboard.png)
+**Supplier management**
 
-![NEXUS supplier management](public/02-supplier-management.png)
+![Suppliers](public/02-supplier-management.png)
+**Matching analytics**
 
-### Matching analytics
-Match precision and recall, duplicate detection, and the confidence distribution of candidate pairs.
-
-![NEXUS matching analytics](public/03-matching-analytics.png)
-
-> Screenshots show the prototype running on the sample dataset (5 suppliers, 39 listings).
+![Analytics](public/03-matching-analytics.png)
 
 ---
 
 ## ✨ Key Features
 
-<details open>
-<summary><b>1. Multi-supplier ingestion</b></summary>
-
-- Upload CSV / Excel catalogs per supplier
-- Preview records and map supplier-specific columns to a standard schema
-- Track upload and processing status
-</details>
-
-<details open>
-<summary><b>2. Cleaning & normalization</b></summary>
-
-- Standardize property names, addresses, room descriptions, and amenities
-- Convert prices to consistent numeric formats and currencies
-- Detect missing, invalid, and duplicate records
-- Generate a data-quality summary per supplier
-</details>
-
-<details open>
-<summary><b>3. AI-assisted property matching</b></summary>
-
-Combines multiple signals into a single match-confidence score:
-
-| Signal | Technique |
+| Module | What it does |
 |---|---|
-| Name similarity | Fuzzy matching (RapidFuzz) |
-| Semantic similarity | Sentence-transformer embeddings |
-| Location | Geographic distance (when coordinates exist) |
-| Address / attributes | Structured field comparison |
+| **Overview** | Pipeline status (ingested → normalized → matched → compared → optimized), KPIs, and a shortcut into the review queue |
+| **Supplier Management** | Supplier directory with type, listing/property counts, data-quality score, and integration health (Live API, Batch SFTP, Manual Upload, Paused) |
+| **Data Intelligence Studio** | Upload CSV, Excel (.xlsx) or JSON; auto-map columns to a standard schema; apply cleaning rules; preview and export cleaned CSV. Files are parsed in the browser |
+| **AI Matching Intelligence** | Scored candidate property pairs with per-signal evidence; confirm, reject, or flag for review; create manual links |
+| **Product Equivalence Lab** | Side-by-side room/offer comparison with a classification and a plain-language verdict |
+| **Supplier Optimization** | Weighted ranking with hard constraints and a per-parameter score breakdown |
+| **Analytics & Reports** | Match precision/recall, confidence distribution, duplicates, supplier completeness and quality, exportable data |
+| **Match History** | Audit trail of manual decisions and actions |
+| **Notifications, Settings, Profile** | Review alerts, tunable thresholds and tax rate, per-user activity |
 
-Every match comes with **inspectable evidence**; users can confirm, reject, or flag it.
-</details>
+---
 
-<details open>
-<summary><b>4. Room & product equivalence</b></summary>
+## 🧠 How It Works
 
-Compares room category, bed configuration, occupancy, size, view, amenities, meal plan, cancellation/refund terms, and taxes/fees.
+All matching, equivalence, and optimization logic is implemented in TypeScript under [`src/lib`](src/lib) and runs entirely in the browser. It is deliberately lightweight and explainable: every score can be traced back to its evidence.
+
+### 1. Normalization (`normalize.ts`)
+
+- Auto-maps supplier column headers (e.g. `hotel_name`, `property`, `board_basis`) to standard fields using synonym lists plus Jaro-Winkler similarity
+- Parses CSV (quoted-field aware), Excel and JSON
+- Cleans names, addresses and amenities, and flags missing, invalid, and duplicate rows
+
+### 2. Property matching (`matching.ts`, `similarity.ts`)
+
+Listings are grouped by normalized city (candidate generation), then every pair in a city is scored from five signals:
+
+| Signal | Weight | Technique |
+|---|---|---|
+| Name | 35% | Token-based fuzzy Dice + sorted Jaro-Winkler + containment; shared location words are stripped so only the brand core is compared |
+| Geography | 25% | Haversine distance, scored 1.0 within 100 m, falling to 0 at 1.5 km |
+| Address | 20% | Abbreviation-expanded tokens (`rd`→`road`, `bengaluru`→`bangalore`) with fuzzy Dice + containment |
+| Attributes | 12% | Amenity Jaccard (canonicalized) + star-rating agreement |
+| Description | 8% | Keyword Jaccard |
+
+Design details:
+
+- **Missing evidence is not penalized.** If a signal is unavailable (e.g. no coordinates), its weight is redistributed across the remaining signals.
+- **Geographic veto.** Pairs more than 2.5 km apart are capped at a 45% score.
+- **Decision handling** (thresholds are configurable in Settings):
+
+| Score | Cross-supplier pair | Same-supplier pair |
+|---|---|---|
+| ≥ 85% (auto) | ✅ Matched | Duplicate |
+| 60–85% | 🟡 Human review queue | Duplicate |
+| < 60% | Unmatched | Unmatched |
+
+- Accepted matches are merged into unified properties with **union-find clustering**.
+
+### 3. Room & product equivalence (`equivalence.ts`)
+
+Offers within a matched property are compared across room type, bed, capacity, size (±10%), view, amenities, meal plan, refundability, cancellation deadline/charges, taxes, and extra fees. Critical attributes are weighted double.
 
 | Class | Meaning |
 |---|---|
@@ -111,211 +118,121 @@ Compares room category, bed configuration, occupancy, size, view, amenities, mea
 | 🟡 **Similar Product** | Broadly the same, with limited differences |
 | 🟠 **Partially Equivalent** | Important differences must be weighed |
 | 🔴 **Non-Equivalent** | Not suitable for direct comparison |
-| ⚪ **Needs Review** | Data is incomplete or conflicting |
-</details>
+| ⚪ **Requires Verification** | Critical data is missing or conflicting |
 
-<details open>
-<summary><b>5. Supplier optimization</b></summary>
+Each comparison produces a generated verdict explaining *why*.
 
-Rank offers using configurable weights and hard constraints:
+### 4. Supplier optimization (`optimize.ts`)
 
-- Price · product equivalence · cancellation flexibility
-- Match confidence · supplier reliability · availability *(when present in the data)*
+Offers are scored on six parameters, combined with user-set weights:
 
-Output: ranked options, trade-offs, constraint checks, and a plain-language explanation.
-</details>
+`Price` · `Product equivalence` · `Supplier reliability` · `Cancellation flexibility` · `Data confidence` · `Availability`
 
-<details open>
-<summary><b>6. Human-in-the-loop verification</b></summary>
+- **Effective price** includes taxes (when not already included) and parsed extra charges
+- **Hard constraints:** must be refundable, must include breakfast, max budget, minimum equivalence
+- Offers that violate a constraint are ranked below all compliant ones, with the violation shown
+- Output includes the ranked list, per-parameter contributions, and an explanation
 
-- Review queue for low-confidence matches
-- Side-by-side record diff
-- Audit trail of manual decisions, reused as labelled data for evaluation
-</details>
+### 5. Human-in-the-loop
 
-<details open>
-<summary><b>7. Analytics & reports</b></summary>
+Uncertain matches go to a review queue. Confirm, reject, or flag decisions are logged to the audit history and feed back into the matching and analytics views.
 
-Supplier distribution, duplicate/unmatched counts, confidence distribution, equivalence breakdown, data-quality indicators, price variation across comparable offers, and exportable reports.
-</details>
-
----
-
-## 🏗 Architecture
-
-```mermaid
-flowchart TD
-    A[Supplier A catalog] --> D[Data Ingestion]
-    B[Supplier B catalog] --> D
-    C[Supplier C catalog] --> D
-    D --> N[Cleaning & Normalization]
-    N --> G[Candidate Generation]
-    G --> S[Feature Comparison & Match Scoring]
-    S -->|high confidence| P[Unified Property]
-    S -->|ambiguous| H[Human Review Queue]
-    H --> P
-    P --> E[Room / Product Equivalence]
-    E --> O[Supplier Ranking & Optimization]
-    O --> X[Explainable Recommendation]
-```
-
-### Matching pipeline
-
-1. **Candidate generation**: shrink the search space using identifiers, names, and geo-blocking so we never compare every pair.
-2. **Feature comparison**: compute name, address, location, description, and attribute similarities.
-3. **Match scoring**: combine signals into a confidence score / classification.
-4. **Decision handling**: auto-accept only above a high threshold; route the grey zone to human review.
-5. **Validation**: measure precision and recall against a labelled set.
-
-> ⚠️ A confidence score is **not** the same as accuracy. Quality is measured on labelled data (see [Evaluation](#-evaluation)).
-
-### Worked example
-
-| Supplier | Listing | Offer |
-|---|---|---|
-| A | Grand Hyatt Mumbai | Deluxe King, breakfast, refundable |
-| B | Grand Hyatt Mumbai Hotel & Residences | Deluxe Room King Bed, breakfast included, refundable |
-| C | Hyatt Grand Mumbai | Deluxe King, room only, non-refundable |
-
-NEXUS should:
-
-1. Flag all three as probable matches for the same property, with evidence.
-2. Classify A ↔ B as **Exact Equivalent**.
-3. Classify C as **Partially / Non-Equivalent** (no breakfast, non-refundable), so its lower price is not compared like-for-like.
-4. Rank A and B using the user's weights and explain the pick.
-
-*Illustrative only; real results depend on the uploaded data and implemented rules.*
+> State (decisions, manual links, settings) is persisted in the browser's `localStorage`. Settings has a reset option.
 
 ---
 
 ## 🧰 Tech Stack
 
-> Proposed direction. Update to match the final build.
-
-| Layer | Technology | Purpose |
-|---|---|---|
-| Frontend | React, Vite, Tailwind CSS | Interactive UI |
-| Backend | Python, FastAPI | APIs and business logic |
-| Data processing | Pandas, NumPy | Cleaning and transformation |
-| Fuzzy matching | RapidFuzz | Name / text similarity |
-| Semantic matching | Sentence Transformers | Embedding similarity |
-| ML | scikit-learn / XGBoost | Match classification |
-| Database | PostgreSQL | Supplier and property records |
-| Vector search | pgvector or FAISS | Nearest-neighbour search |
-| Optimization | SciPy or OR-Tools | Ranking under constraints |
-
-## 🧩 Application Modules
-
-| Module | Purpose |
+| Layer | Technology |
 |---|---|
-| Overview Dashboard | Supplier, inventory, and matching summaries |
-| Supplier Management | Manage suppliers and their datasets |
-| Data Intelligence Studio | Upload, map, clean, normalize |
-| AI Matching Intelligence | Inspect matches and confidence evidence |
-| Product Equivalence Lab | Compare rooms, inclusions, and policies |
-| Supplier Optimization Engine | Rank offers by user priorities |
-| Analytics & Reports | Performance review and exports |
-| Match History | Past matches and verification decisions |
+| Framework | React 19, TypeScript 5.7 |
+| Build tool | Vite 8 |
+| Styling | Tailwind CSS 4 |
+| Icons | lucide-react |
+| Excel parsing | read-excel-file |
+| Matching / scoring | Custom TypeScript (Jaro-Winkler, fuzzy Dice, Jaccard, Haversine, union-find) |
+| Persistence | Browser `localStorage` |
+| Package manager | pnpm (Node 22) |
+
+## 📁 Project Structure
+
+```text
+Nexus-Intelligence-Platform/
+├── public/                 # favicon + README screenshots
+├── src/
+│   ├── components/         # Shell, charts, shared UI
+│   ├── data/               # seed suppliers/listings/datasets, product offers
+│   ├── lib/
+│   │   ├── normalize.ts    # column mapping, parsing, cleaning
+│   │   ├── similarity.ts   # string, address, geo, amenity primitives
+│   │   ├── matching.ts     # pair scoring, decisions, clustering
+│   │   ├── equivalence.ts  # offer comparison & classification
+│   │   └── optimize.ts     # weighted ranking with constraints
+│   ├── pages/              # Overview, Suppliers, Studio, Matching,
+│   │                       # Equivalence, Optimization, Analytics, History, ...
+│   ├── store.tsx           # global state + persistence
+│   ├── types.ts
+│   └── App.tsx
+├── index.html
+├── package.json
+└── vite.config.ts
+```
 
 ---
 
 ## 🚀 Quick Start
 
-> Commands are templates; adjust paths and entry points to the actual repo.
-
-**Prerequisites:** Python 3.10+, Node.js 18+ and npm, PostgreSQL (optional for persistence).
+**Prerequisites:** Node.js 22+ and [pnpm](https://pnpm.io/installation) (npm also works).
 
 ```bash
 git clone https://github.com/krupam26/Nexus-Intelligence-Platform.git
+cd Nexus-Intelligence-Platform
+pnpm install
+pnpm dev
 ```
 
-**Backend**
+Open the URL printed in the terminal. The dev server defaults to port **8443** (override with the `PORT` environment variable).
 
 ```bash
-cd backend
-python -m venv venv
-
-# macOS / Linux
-source venv/bin/activate
-# Windows PowerShell
-# .\venv\Scripts\Activate.ps1
-
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+pnpm build      # production build
+pnpm preview    # preview the production build
 ```
 
-API docs will be available at `http://localhost:8000/docs`.
-
-**Frontend**
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-**Configuration:** copy `.env.example` to `.env` and set values such as `DATABASE_URL`.
-
----
-
-## 📁 Project Structure
-
-```text
-nexus/
-├── frontend/            # React + Vite app
-│   └── src/ (components, pages, services, assets)
-├── backend/
-│   ├── app/
-│   │   ├── api/             # FastAPI routes
-│   │   ├── preprocessing/   # cleaning & normalization
-│   │   ├── matching/        # candidate generation, scoring
-│   │   ├── optimization/    # ranking & constraints
-│   │   ├── services/
-│   │   └── main.py
-│   └── requirements.txt
-├── data/ (raw, processed, samples)
-├── docs/
-└── README.md
-```
-
-*A suggested layout, not a claim about current contents.*
+**Try it:** open *Data Intelligence Studio* and load one of the built-in sample files, or upload your own CSV / Excel / JSON catalog.
 
 ---
 
 ## 📊 Evaluation
 
-We report measured results, not unverified claims. Build a labelled test set of true matches, non-matches, and hard ambiguous cases.
+Matching quality is measured against a labelled ground-truth set bundled with the sample data (`GROUND_TRUTH` in `src/data/seed.ts`).
 
-| Area | Metric | Result |
+| Area | Metric | Current result (sample set) |
 |---|---|---|
 | Property matching | Precision | **100%** (15 TP, 0 FP) |
 | Property matching | Recall | **48.4%** (16 true pairs not yet linked) |
-| Property matching | F1-score | _TBD_ |
-| Candidate generation | Candidate recall | _TBD_ |
-| Product equivalence | Precision / Recall / F1 | _TBD_ |
-| Data quality | Missing-value rate, normalization success | _TBD_ |
-| Throughput | Records / second | _TBD_ |
-| Optimization | Constraint satisfaction, ranking quality | _TBD_ |
-| Human review | % of cases sent to review | _TBD_ |
 
-> Current numbers come from the verified test data on the 39-listing sample set. The sample is small, so treat them as early indicators. Precision is high, while recall shows room to improve candidate generation and thresholds.
+> Results come from the 39-listing sample dataset (5 suppliers), so treat them as early indicators rather than general performance claims. Precision is high; recall leaves room to improve through threshold tuning and review-queue verification.
+
+Planned metrics: product-equivalence precision/recall, candidate recall, and processing throughput on larger datasets.
+
+---
 
 ## 🔭 Roadmap
 
-- [ ] Incremental matching for new or updated records
-- [ ] More supplier-specific connectors
+- [ ] Backend API (e.g. FastAPI) and database for persistent, multi-user storage
+- [ ] Embedding-based semantic matching to complement the current lexical signals
+- [ ] Learned match classifier trained on verified review decisions
+- [ ] Scalable candidate generation (blocking / vector search) for large catalogs
+- [ ] Live supplier connectors (API / SFTP)
 - [ ] Map-based property verification
-- [ ] Adaptive thresholds based on data quality
-- [ ] Price / attribute anomaly detection
-- [ ] Supplier reliability modelling
-- [ ] Audit logs and role-based access
-- [ ] Large-scale batch processing and deployment
+- [ ] Price and attribute anomaly detection
+- [ ] Role-based access and server-side audit logs
 
 ## ⚖️ Design Principles
 
 - **Explain, don't just score.** Every match and recommendation shows its evidence.
 - **Surface uncertainty.** Missing or conflicting data is flagged, never silently assumed.
-- **Humans stay in control.** Ambiguous cases go to review; decisions are logged.
+- **Humans stay in control.** Ambiguous cases go to review and decisions are logged.
 - **Compare like with like.** Price is only compared across equivalent products.
 
 ---
@@ -330,7 +247,7 @@ We report measured results, not unverified claims. Build a labelled test set of 
 
 ## 📄 Note
 
-NEXUS is a decision-support tool. Recommendations depend on the quality, completeness, and freshness of supplier data.
+NEXUS is a decision-support prototype. Recommendations depend on the quality, completeness, and freshness of the supplier data provided. Sample data is illustrative.
 
 ---
 
